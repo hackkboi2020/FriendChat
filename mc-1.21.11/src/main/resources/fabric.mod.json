@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "friendchat",
+  "version": "${version}",
+  "name": "Friend Chat",
+  "description": "A sleek chat window for you and your friends. Works in the main menu, in-game and on any server.",
+  "authors": ["Abdelrahman"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": { "client": ["dev.friendchat.FriendChatClient"] },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
