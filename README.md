@@ -28,5 +28,3 @@ Host it on a PC with the port forwarded, a VPS, or any host that runs Node and s
 - **Config** in the chat window: server host, port, username, password, window width/height, window position (center or any corner), opacity, auto-connect, and echo of new messages into vanilla chat. Settings are also in `config/friendchat.json`.
 - Mouse wheel scrolls history, Enter sends.
 
-## If the build fails
-I could not compile this myself. If Actions shows an error, send me the error text. The lines most likely to need a tweak on a given Minecraft version are the `keyPressed(KeyEvent)` override and the key-mapping registration.
