@@ -20,6 +20,8 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 public class FriendChatClient implements ClientModInitializer {
     public static KeyMapping OPEN_KEY;
 
+    public static volatile Screen CURRENT;
+
     private static void addWidget(Screen s, Button b) {
         try {
             java.lang.reflect.Method m = Screen.class.getDeclaredMethod("addRenderableWidget", GuiEventListener.class);
@@ -39,11 +41,15 @@ public class FriendChatClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             while (OPEN_KEY.consumeClick()) {
-                if (mc.gui.screen == null) mc.setScreenAndShow(new FriendChatScreen(null));
+                if (CURRENT == null) mc.setScreenAndShow(new FriendChatScreen(null));
             }
         });
 
         ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
+            CURRENT = screen;
+            ScreenEvents.remove(screen).register(s -> {
+                if (CURRENT == s) CURRENT = null;
+            });
             if (screen instanceof TitleScreen || screen instanceof PauseScreen || screen instanceof JoinMultiplayerScreen) {
                 addWidget(screen,
                         Button.builder(Component.literal("Chat"), b -> mc.setScreenAndShow(new FriendChatScreen(screen)))

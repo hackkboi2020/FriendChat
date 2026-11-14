@@ -149,7 +149,7 @@ public final class ChatClient {
         if (user.equals(ChatConfig.get().effectiveName())) return;
         Minecraft mc = Minecraft.getInstance();
         mc.execute(() -> {
-            if (mc.player != null && !(mc.gui.screen instanceof FriendChatScreen)) {
+            if (mc.player != null && !(FriendChatClient.CURRENT instanceof FriendChatScreen)) {
                 mc.player.sendSystemMessage(Component.literal("\u00a79[FriendChat] \u00a7b" + user + "\u00a7r: " + text));
             }
         });
