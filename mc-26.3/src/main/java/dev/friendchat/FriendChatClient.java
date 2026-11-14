@@ -14,9 +14,20 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 
 public class FriendChatClient implements ClientModInitializer {
     public static KeyMapping OPEN_KEY;
+
+    private static void addWidget(Screen s, Button b) {
+        try {
+            java.lang.reflect.Method m = Screen.class.getDeclaredMethod("addRenderableWidget", GuiEventListener.class);
+            m.setAccessible(true);
+            m.invoke(s, b);
+        } catch (Throwable ignored) {
+        }
+    }
 
     @Override
     public void onInitializeClient() {
@@ -24,17 +35,17 @@ public class FriendChatClient implements ClientModInitializer {
 
         KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("friendchat", "main"));
         OPEN_KEY = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key.friendchat.open", InputConstants.Type.KEYSYM, InputConstants.KEY_Y, category));
+                new KeyMapping("key.friendchat.open", InputConstants.Type.KEYBOARD, InputConstants.KEY_Y, category));
 
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             while (OPEN_KEY.consumeClick()) {
-                if (mc.screen == null) mc.setScreenAndShow(new FriendChatScreen(null));
+                if (mc.gui.screen == null) mc.setScreenAndShow(new FriendChatScreen(null));
             }
         });
 
         ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
             if (screen instanceof TitleScreen || screen instanceof PauseScreen || screen instanceof JoinMultiplayerScreen) {
-                Screens.getButtons(screen).add(
+                addWidget(screen,
                         Button.builder(Component.literal("Chat"), b -> mc.setScreenAndShow(new FriendChatScreen(screen)))
                                 .bounds(4, 4, 50, 20).build());
             }
