@@ -11,7 +11,7 @@ public class FriendConfigScreen extends Screen {
     private EditBox host, port, name, pass, wid, hei;
     private String vHost, vPort, vName, vPass, vWid, vHei;
     private int layoutIdx, opacity;
-    private boolean auto, echo;
+    private boolean auto, echo, tls;
 
     public FriendConfigScreen(Screen parent) {
         super(Component.literal("Friend Chat Config"));
@@ -27,6 +27,7 @@ public class FriendConfigScreen extends Screen {
         opacity = c.opacity;
         auto = c.autoConnect;
         echo = c.echoToGameChat;
+        tls = c.useTls;
     }
 
     private EditBox box(int x, int y, int w, String val, int max) {
@@ -50,7 +51,7 @@ public class FriendConfigScreen extends Screen {
     @Override
     protected void init() {
         capture();
-        int lx = width / 2 - 155, rx = width / 2 + 5, w = 150, y0 = 50, dy = 32;
+        int lx = width / 2 - 155, rx = width / 2 + 5, w = 150, y0 = 44, dy = 30;
         host = box(lx, y0, w, vHost, 128);
         port = box(lx, y0 + dy, w, vPort, 5);
         name = box(lx, y0 + 2 * dy, w, vName, 32);
@@ -73,7 +74,11 @@ public class FriendConfigScreen extends Screen {
             echo = !echo;
             b.setMessage(Component.literal("Show in game chat: " + (echo ? "ON" : "OFF")));
         }).bounds(rx, y0 + 4 * dy, w, 18).build());
-        int by = Math.min(height - 28, y0 + 5 * dy + 6);
+        addRenderableWidget(Button.builder(Component.literal("Use TLS (wss): " + (tls ? "ON" : "OFF")), b -> {
+            tls = !tls;
+            b.setMessage(Component.literal("Use TLS (wss): " + (tls ? "ON" : "OFF")));
+        }).bounds(lx, y0 + 5 * dy, w, 18).build());
+        int by = Math.min(height - 28, y0 + 5 * dy + 26);
         addRenderableWidget(Button.builder(Component.literal("Save & Reconnect"), b -> save())
                 .bounds(width / 2 - 155, by, 150, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Cancel"), b -> onClose())
@@ -91,7 +96,8 @@ public class FriendConfigScreen extends Screen {
     private void save() {
         capture();
         ChatConfig c = ChatConfig.get();
-        c.serverHost = vHost.trim();
+        c.serverHost = vHost.trim().replaceAll("^(wss?|https?)://", "").replaceAll("/.*$", "");
+        c.useTls = tls;
         c.serverPort = num(vPort, c.serverPort);
         c.username = vName.trim();
         c.password = vPass;
@@ -116,7 +122,7 @@ public class FriendConfigScreen extends Screen {
         super.extractBackground(g, mx, my, pt);
         String title = "Friend Chat Config";
         g.text(font, title, width / 2 - font.width(title) / 2, 16, 0xFFFFFFFF, false);
-        int lx = width / 2 - 155, rx = width / 2 + 5, y0 = 50, dy = 32;
+        int lx = width / 2 - 155, rx = width / 2 + 5, y0 = 44, dy = 30;
         int c = 0xFFA0A4AD;
         g.text(font, "Server host / IP", lx, y0 - 10, c, false);
         g.text(font, "Server port", lx, y0 + dy - 10, c, false);

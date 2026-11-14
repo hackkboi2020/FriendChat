@@ -1,10 +1,15 @@
 // Friend Chat relay server. Run: npm install && PASSWORD=secret PORT=8765 node server.js
+const http = require('http');
 const { WebSocketServer } = require('ws');
 const PORT = parseInt(process.env.PORT || '8765', 10);
 const PASSWORD = process.env.PASSWORD || '';
 const HISTORY = 100;
 const history = [];
-const wss = new WebSocketServer({ port: PORT });
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Friend Chat server is running');
+});
+const wss = new WebSocketServer({ server });
 
 function broadcast(obj) {
   const s = JSON.stringify(obj);
@@ -44,4 +49,4 @@ setInterval(() => {
     c.alive = false; c.ping();
   }
 }, 30000);
-console.log('Friend Chat server on port ' + PORT + (PASSWORD ? ' (password protected)' : ' (no password)'));
+server.listen(PORT, () => console.log('Friend Chat server on port ' + PORT + (PASSWORD ? ' (password protected)' : ' (no password)')));
