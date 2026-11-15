@@ -3,6 +3,7 @@ package dev.friendchat;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.network.chat.Component;
 
 import java.net.URI;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 public final class ChatClient {
     public static final ChatClient INSTANCE = new ChatClient();
+    private static final SystemToast.SystemToastId TOAST_ID = new SystemToast.SystemToastId();
 
     private final HttpClient http = HttpClient.newHttpClient();
     private final List<ChatMessage> messages = new ArrayList<>();
@@ -39,6 +41,11 @@ public final class ChatClient {
     }
 
     private ChatClient() {
+    }
+
+    public void toast(String title, String text) {
+        Minecraft mc = Minecraft.getInstance();
+        mc.execute(() -> SystemToast.addOrUpdate(mc.getToastManager(), TOAST_ID, Component.literal(title), Component.literal(text)));
     }
 
     public String status() {
@@ -150,19 +157,30 @@ public final class ChatClient {
             boolean history = o.has("h") && o.get("h").getAsBoolean();
             String color = o.has("color") ? o.get("color").getAsString() : "";
             String icon = o.has("icon") ? o.get("icon").getAsString() : "";
+            if (user.equals(ChatConfig.get().effectiveName())) {
+                if (color.isEmpty()) color = ChatConfig.get().nameColor;
+                if (icon.isEmpty()) icon = ChatConfig.get().icon;
+            }
             add(new ChatMessage(ts, user, text, false, color, icon));
-            echo(user, text, history);
+            echo(user, icon, text, history);
         } catch (Exception ignored) {
         }
     }
 
-    private void echo(String user, String text, boolean history) {
-        if (history || !ChatConfig.get().echoToGameChat) return;
-        if (user.equals(ChatConfig.get().effectiveName())) return;
+    private void echo(String user, String icon, String text, boolean history) {
+        if (history) return;
+        ChatConfig c = ChatConfig.get();
+        boolean self = user.equals(c.effectiveName());
+        if (self && !c.redirectGameChat) return;
         Minecraft mc = Minecraft.getInstance();
+        String title = icon == null || icon.isEmpty() ? user : user + " " + icon;
         mc.execute(() -> {
-            if (mc.player != null && !(FriendChatClient.CURRENT instanceof FriendChatScreen)) {
-                mc.player.sendSystemMessage(Component.literal("\u00a79[FriendChat] \u00a7b" + user + "\u00a7r: " + text));
+            if (FriendChatClient.CURRENT instanceof FriendChatScreen) return;
+            if (!self && c.popupMessages) {
+                SystemToast.addOrUpdate(mc.getToastManager(), TOAST_ID, Component.literal(title), Component.literal(text));
+            }
+            if (mc.player != null && (c.echoToGameChat || (self && c.redirectGameChat))) {
+                mc.player.sendSystemMessage(Component.literal("\u00a79[FriendChat] \u00a7b" + (self ? "You" : user) + "\u00a7r: " + text));
             }
         });
     }

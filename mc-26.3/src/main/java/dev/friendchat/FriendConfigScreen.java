@@ -11,7 +11,7 @@ public class FriendConfigScreen extends Screen {
     private EditBox host, port, name, pass, wid, hei;
     private String vHost, vPort, vName, vPass, vWid, vHei;
     private int layoutIdx, opacity;
-    private boolean auto, echo, tls;
+    private boolean auto, echo, tls, popup;
 
     public FriendConfigScreen(Screen parent) {
         super(Component.literal("Friend Chat Config"));
@@ -28,6 +28,7 @@ public class FriendConfigScreen extends Screen {
         auto = c.autoConnect;
         echo = c.echoToGameChat;
         tls = c.useTls;
+        popup = c.popupMessages;
     }
 
     private EditBox box(int x, int y, int w, String val, int max) {
@@ -78,6 +79,10 @@ public class FriendConfigScreen extends Screen {
             tls = !tls;
             b.setMessage(Component.literal("Use TLS (wss): " + (tls ? "ON" : "OFF")));
         }).bounds(lx, y0 + 5 * dy, w, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("Popup alerts: " + (popup ? "ON" : "OFF")), b -> {
+            popup = !popup;
+            b.setMessage(Component.literal("Popup alerts: " + (popup ? "ON" : "OFF")));
+        }).bounds(rx, y0 + 5 * dy, w, 18).build());
         int by = Math.min(height - 28, y0 + 5 * dy + 26);
         addRenderableWidget(Button.builder(Component.literal("Save & Reconnect"), b -> save())
                 .bounds(width / 2 - 155, by, 150, 20).build());
@@ -98,6 +103,7 @@ public class FriendConfigScreen extends Screen {
         ChatConfig c = ChatConfig.get();
         c.serverHost = vHost.trim().replaceAll("^(wss?|https?)://", "").replaceAll("/.*$", "");
         c.useTls = tls;
+        c.popupMessages = popup;
         c.serverPort = num(vPort, c.serverPort);
         c.username = vName.trim();
         c.password = vPass;

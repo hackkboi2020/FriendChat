@@ -24,6 +24,8 @@ public class ChatConfig {
     public int opacity = 80;
     public boolean autoConnect = true;
     public boolean echoToGameChat = true;
+    public boolean redirectGameChat = false;
+    public boolean popupMessages = true;
     public String nameColor = "";
     public String icon = "";
 

@@ -10,6 +10,8 @@ A sleek chat window for you and your friends in Minecraft (Fabric). It works in 
 - Automatic reconnect (with backoff) if the connection drops
 - Discord-style layout: avatars, grouped messages, hover highlight, rounded panel
 - Customize menu (the star button): pick your name color and an icon next to your name (crown, skull, swords and more) that everyone sees
+- Popup alerts (toasts) for new messages on every screen, including the main menu
+- Toggle to send your normal in-game chat to Friend Chat instead of the Minecraft server (button in the chat window, or key F9)
 - Compact icon buttons in the header: customize (star), refresh (circular arrow) and settings (gear)
 - In-game config screen: server host, port, TLS, username, password, window width and height, window position (center or any corner), opacity, auto-connect
 - Free to host 24/7 (see [Chat server](#2-set-up-the-chat-server))
@@ -97,6 +99,7 @@ Settings are saved in `config/friendchat.json`.
 | Send a message | Type and press Enter, or click **Send** |
 | Scroll history | Mouse wheel |
 | Customize name color and icon | Star button in the chat window |
+| Send game chat to Friend Chat | Arrows button in the chat window (green = on), or press F9 |
 | Open settings | Gear button in the chat window |
 | Reconnect | Refresh (circular arrow) button in the chat window |
 | Close | Esc |

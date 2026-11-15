@@ -78,6 +78,14 @@ public class FriendChatScreen extends Screen {
                 .bounds(px + pw - 6 - 16 - 3 - 16, by, 16, 14).build());
         addRenderableWidget(Button.builder(Component.literal("\u2726"), b -> minecraft.setScreenAndShow(new FriendStyleScreen(this)))
                 .bounds(px + pw - 6 - 16 - 3 - 16 - 3 - 16, by, 16, 14).build());
+        addRenderableWidget(Button.builder(Component.literal(redirectLabel()), b -> {
+            FriendChatClient.toggleRedirect();
+            b.setMessage(Component.literal(redirectLabel()));
+        }).bounds(px + pw - 6 - 16 * 4 - 9, by, 16, 14).build());
+    }
+
+    private static String redirectLabel() {
+        return ChatConfig.get().redirectGameChat ? "\u00a7a\u21C4" : "\u21C4";
     }
 
     private void send() {
