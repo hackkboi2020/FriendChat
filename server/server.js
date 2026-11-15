@@ -36,7 +36,8 @@ wss.on('connection', (ws, req) => {
     ws.stamps.push(now);
     const text = clean(o.text, 256);
     if (!text) return;
-    const msg = { type: 'chat', user: ws.user, text, ts: now };
+    const color = /^#[0-9a-fA-F]{6}$/.test(o.color || '') ? o.color : ''; const icon = Array.from(String(o.icon || '').replace(/[\u0000-\u001f]/g, '')).slice(0, 2).join('');
+    const msg = { type: 'chat', user: ws.user, text, ts: now, color, icon };
     history.push(msg); if (history.length > HISTORY) history.shift();
     broadcast(msg);
   });

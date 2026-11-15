@@ -31,6 +31,12 @@ public final class ChatClient {
     private volatile WebSocket socket;
     private volatile String status = "Disconnected";
     private volatile int generation = 0;
+    private volatile int version = 0;
+    private int retry = 0;
+
+    public int version() {
+        return version;
+    }
 
     private ChatClient() {
     }
@@ -50,13 +56,14 @@ public final class ChatClient {
     }
 
     public void addSystem(String text) {
-        add(new ChatMessage(System.currentTimeMillis(), "", text, true));
+        add(new ChatMessage(System.currentTimeMillis(), "", text, true, "", ""));
     }
 
     private void add(ChatMessage m) {
         synchronized (messages) {
             messages.add(m);
-            while (messages.size() > 500) messages.remove(0);
+            while (messages.size() > 300) messages.remove(0);
+            version++;
         }
     }
 
@@ -108,6 +115,8 @@ public final class ChatClient {
         JsonObject o = new JsonObject();
         o.addProperty("type", "chat");
         o.addProperty("text", text);
+        o.addProperty("color", ChatConfig.get().nameColor);
+        o.addProperty("icon", ChatConfig.get().icon);
         w.sendText(o.toString(), true);
         return true;
     }
@@ -115,9 +124,10 @@ public final class ChatClient {
     private void scheduleReconnect(int gen) {
         if (!ChatConfig.get().autoConnect) return;
         try {
+            int delay = Math.min(30, 3 + 3 * retry++);
             scheduler.schedule(() -> {
                 if (gen == generation) connect();
-            }, 5, TimeUnit.SECONDS);
+            }, delay, TimeUnit.SECONDS);
         } catch (Exception ignored) {
         }
     }
@@ -132,13 +142,15 @@ public final class ChatClient {
             String type = o.has("type") ? o.get("type").getAsString() : "chat";
             String text = o.has("text") ? o.get("text").getAsString() : "";
             if (type.equals("system")) {
-                add(new ChatMessage(System.currentTimeMillis(), "", text, true));
+                add(new ChatMessage(System.currentTimeMillis(), "", text, true, "", ""));
                 return;
             }
             String user = o.has("user") ? o.get("user").getAsString() : "?";
             long ts = o.has("ts") ? o.get("ts").getAsLong() : System.currentTimeMillis();
             boolean history = o.has("h") && o.get("h").getAsBoolean();
-            add(new ChatMessage(ts, user, text, false));
+            String color = o.has("color") ? o.get("color").getAsString() : "";
+            String icon = o.has("icon") ? o.get("icon").getAsString() : "";
+            add(new ChatMessage(ts, user, text, false, color, icon));
             echo(user, text, history);
         } catch (Exception ignored) {
         }
@@ -171,6 +183,7 @@ public final class ChatClient {
             }
             socket = w;
             status = "Connected";
+            retry = 0;
             w.request(1);
         }
 

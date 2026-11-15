@@ -7,7 +7,10 @@ A sleek chat window for you and your friends in Minecraft (Fabric). It works in 
 - Chat window that opens anywhere: main menu, pause menu, multiplayer list, or in game
 - Message list with timestamps, coloured names, word wrap and mouse-wheel scrolling
 - New messages also show in vanilla chat while the window is closed (can be turned off)
-- Automatic reconnect if the connection drops
+- Automatic reconnect (with backoff) if the connection drops
+- Discord-style layout: avatars, grouped messages, hover highlight, rounded panel
+- Customize menu (the star button): pick your name color and an icon next to your name (crown, skull, swords and more) that everyone sees
+- Compact icon buttons in the header: customize (star), refresh (circular arrow) and settings (gear)
 - In-game config screen: server host, port, TLS, username, password, window width and height, window position (center or any corner), opacity, auto-connect
 - Free to host 24/7 (see [Chat server](#2-set-up-the-chat-server))
 
@@ -93,8 +96,9 @@ Settings are saved in `config/friendchat.json`.
 | Open chat in menus | Click the **Chat** button at the top left |
 | Send a message | Type and press Enter, or click **Send** |
 | Scroll history | Mouse wheel |
-| Open settings | **Config** button in the chat window |
-| Reconnect | **Reconnect** button in the chat window |
+| Customize name color and icon | Star button in the chat window |
+| Open settings | Gear button in the chat window |
+| Reconnect | Refresh (circular arrow) button in the chat window |
 | Close | Esc |
 
 ## Troubleshooting
@@ -134,6 +138,10 @@ mc-26.3/       Fabric mod for Minecraft 26.3
 cloudflare/    Chat server for Cloudflare Workers (free)
 server/        Chat server for Node.js
 ```
+
+## Updating the server
+
+From 1.1.0 the server also relays each player's name color and icon. Redeploy it once (`npx wrangler deploy` in the `cloudflare` folder, or restart `node server.js`). Old servers keep working, but icons and colors will not be shown to others.
 
 ## Notes
 

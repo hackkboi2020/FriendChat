@@ -50,7 +50,8 @@ export class ChatRoom {
     ws.serializeAttachment(att);
     const text = this.clean(o.text, 256);
     if (!text) return;
-    const msg = { type: 'chat', user: att.user, text, ts: now };
+    const color = /^#[0-9a-fA-F]{6}$/.test(o.color || '') ? o.color : ''; const icon = Array.from(String(o.icon || '').replace(/[\u0000-\u001f]/g, '')).slice(0, 2).join('');
+    const msg = { type: 'chat', user: att.user, text, ts: now, color, icon };
     const history = (await this.state.storage.get('history')) || [];
     history.push(msg);
     while (history.length > 100) history.shift();

@@ -24,6 +24,8 @@ public class ChatConfig {
     public int opacity = 80;
     public boolean autoConnect = true;
     public boolean echoToGameChat = true;
+    public String nameColor = "";
+    public String icon = "";
 
     public static ChatConfig get() {
         return instance;
@@ -62,6 +64,8 @@ public class ChatConfig {
         panelWidth = Math.max(160, Math.min(900, panelWidth));
         panelHeight = Math.max(110, Math.min(700, panelHeight));
         opacity = Math.max(10, Math.min(100, opacity));
+        if (nameColor == null || !nameColor.matches("#[0-9a-fA-F]{6}")) nameColor = "";
+        icon = icon == null ? "" : ChatStyle.firstChars(icon.trim(), 2);
         boolean ok = false;
         for (String l : LAYOUTS) if (l.equals(layout)) ok = true;
         if (!ok) layout = "BOTTOM_RIGHT";

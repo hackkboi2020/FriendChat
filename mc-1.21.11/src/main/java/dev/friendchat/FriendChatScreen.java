@@ -9,6 +9,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -16,15 +17,16 @@ import java.util.List;
 
 public class FriendChatScreen extends Screen {
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault());
-    private static final int[] PALETTE = {0xFF5DADE2, 0xFFF5B041, 0xFFEB984E, 0xFFAF7AC5, 0xFF48C9B0, 0xFFEC7063, 0xFFF4D03F, 0xFF85C1E9};
 
-    private record Line(String time, String name, int nameColor, String text, int textColor, boolean head) {
+    private record Row(int group, boolean head, boolean system, String name, int color, String icon, String time, String text, int h) {
     }
 
     private final Screen parent;
     private EditBox input;
     private String draft = "";
-    private int px, py, pw, ph, scroll;
+    private int px, py, pw, ph, scrollPx;
+    private List<Row> rows = new ArrayList<>();
+    private int totalH, cacheVersion = -1, cacheW = -1;
 
     public FriendChatScreen(Screen parent) {
         super(Component.literal("Friend Chat"));
@@ -35,8 +37,8 @@ public class FriendChatScreen extends Screen {
     protected void init() {
         if (input != null) draft = input.getValue();
         ChatConfig c = ChatConfig.get();
-        pw = Math.max(160, Math.min(c.panelWidth, width - 8));
-        ph = Math.max(110, Math.min(c.panelHeight, height - 8));
+        pw = Math.max(180, Math.min(c.panelWidth, width - 8));
+        ph = Math.max(120, Math.min(c.panelHeight, height - 8));
         switch (c.layout) {
             case "CENTER" -> {
                 px = (width - pw) / 2;
@@ -59,18 +61,23 @@ public class FriendChatScreen extends Screen {
                 py = height - ph - 4;
             }
         }
-        input = new EditBox(font, px + 6, py + ph - 22, pw - 12 - 52, 16, Component.literal("Message"));
+        cacheVersion = -1;
+        input = new EditBox(font, px + 12, py + ph - 21, pw - 12 - 6 - 24, 12, Component.literal("Message"));
+        input.setBordered(false);
         input.setMaxLength(256);
-        input.setHint(Component.literal("Type a message..."));
+        input.setHint(Component.literal("Message everyone..."));
         input.setValue(draft);
         addRenderableWidget(input);
         setInitialFocus(input);
-        addRenderableWidget(Button.builder(Component.literal("Send"), b -> send())
-                .bounds(px + pw - 6 - 48, py + ph - 23, 48, 18).build());
-        addRenderableWidget(Button.builder(Component.literal("Config"), b -> minecraft.setScreen(new FriendConfigScreen(this)))
-                .bounds(px + pw - 6 - 44, py + 4, 44, 14).build());
-        addRenderableWidget(Button.builder(Component.literal("Reconnect"), b -> ChatClient.INSTANCE.connect())
-                .bounds(px + pw - 6 - 44 - 4 - 62, py + 4, 62, 14).build());
+        addRenderableWidget(Button.builder(Component.literal("\u27A4"), b -> send())
+                .bounds(px + pw - 6 - 20, py + ph - 23, 18, 16).build());
+        int by = py + 5;
+        addRenderableWidget(Button.builder(Component.literal("\u2699"), b -> minecraft.setScreen(new FriendConfigScreen(this)))
+                .bounds(px + pw - 6 - 16, by, 16, 14).build());
+        addRenderableWidget(Button.builder(Component.literal("\u21BB"), b -> ChatClient.INSTANCE.connect())
+                .bounds(px + pw - 6 - 16 - 3 - 16, by, 16, 14).build());
+        addRenderableWidget(Button.builder(Component.literal("\u2726"), b -> minecraft.setScreen(new FriendStyleScreen(this)))
+                .bounds(px + pw - 6 - 16 - 3 - 16 - 3 - 16, by, 16, 14).build());
     }
 
     private void send() {
@@ -78,7 +85,7 @@ public class FriendChatScreen extends Screen {
         if (t.isEmpty()) return;
         if (!ChatClient.INSTANCE.send(t)) ChatClient.INSTANCE.addSystem("Not connected to the chat server.");
         input.setValue("");
-        scroll = 0;
+        scrollPx = 0;
     }
 
     @Override
@@ -93,8 +100,8 @@ public class FriendChatScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double x, double y, double sx, double sy) {
-        scroll += (int) Math.signum(sy) * 3;
-        if (scroll < 0) scroll = 0;
+        scrollPx += (int) Math.signum(sy) * 24;
+        if (scrollPx < 0) scrollPx = 0;
         return true;
     }
 
@@ -138,61 +145,106 @@ public class FriendChatScreen extends Screen {
         return out;
     }
 
+    private void addRow(Row r) {
+        rows.add(r);
+        totalH += r.h();
+    }
+
+    private void layout() {
+        int bodyW = pw - 8 - 24 - 8;
+        int sysW = pw - 16;
+        int ver = ChatClient.INSTANCE.version();
+        if (ver == cacheVersion && bodyW == cacheW) return;
+        cacheVersion = ver;
+        cacheW = bodyW;
+        rows = new ArrayList<>();
+        totalH = 0;
+        int lh = font.lineHeight + 2;
+        ChatMessage prev = null;
+        int group = -1;
+        for (ChatMessage m : ChatClient.INSTANCE.snapshot(150)) {
+            String time = TIME.format(Instant.ofEpochMilli(m.time()));
+            if (m.system()) {
+                group++;
+                for (String s : wrap(font, "* " + m.text(), sysW, sysW)) addRow(new Row(group, false, true, "", 0xFFF0B232, "", time, s, lh));
+                prev = m;
+                continue;
+            }
+            boolean head = prev == null || prev.system() || !prev.user().equals(m.user()) || m.time() - prev.time() > 300000L;
+            int color = ChatStyle.rgb(m.color(), m.user());
+            if (head) {
+                group++;
+                addRow(new Row(group, true, false, m.user(), color, m.icon(), time, "", 14));
+            }
+            for (String s : wrap(font, m.text(), bodyW, bodyW)) addRow(new Row(group, false, false, m.user(), color, m.icon(), time, s, lh));
+            prev = m;
+        }
+    }
+
     @Override
     public void renderBackground(GuiGraphics g, int mx, int my, float pt) {
         super.renderBackground(g, mx, my, pt);
         ChatConfig c = ChatConfig.get();
         int a = Math.max(0, Math.min(255, (int) (c.opacity * 2.55f)));
-        int a2 = Math.min(255, a + 30);
-        g.fill(px, py, px + pw, py + ph, (a << 24) | 0x12141C);
-        g.fill(px, py, px + pw, py + 18, (a2 << 24) | 0x1E2230);
-        g.fill(px, py + 17, px + pw, py + 18, 0xFF5865F2);
-        g.drawString(font, "Friend Chat", px + 6, py + 5, 0xFFFFFFFF, false);
+        int a2 = Math.min(255, a + 25);
+        Gfx.rrect(g, px, py, px + pw, py + ph, (a << 24) | 0x313338);
+        Gfx.rrect(g, px, py, px + pw, py + 24, (a2 << 24) | 0x2B2D31);
+        g.fill(px, py + 24, px + pw, py + 25, 0xFF1E1F22);
+        g.drawString(font, "Friend Chat", px + 8, py + 8, 0xFFFFFFFF, false);
         String st = ChatClient.INSTANCE.status();
-        int stColor = st.equals("Connected") ? 0xFF57F287 : st.startsWith("Connecting") ? 0xFFF5B041 : 0xFFED4245;
-        g.drawString(font, st, px + 6 + font.width("Friend Chat") + 8, py + 5, stColor, false);
+        int stColor = st.equals("Connected") ? 0xFF23A55A : st.startsWith("Connecting") ? 0xFFF0B232 : 0xFFF23F43;
+        int dx = px + 8 + font.width("Friend Chat") + 8;
+        g.fill(dx, py + 9, dx + 6, py + 15, stColor);
+        if (!st.equals("Connected")) g.drawString(font, st, dx + 10, py + 8, stColor, false);
 
-        int top = py + 22;
-        int bottom = py + ph - 28;
-        int lineH = font.lineHeight + 1;
-        int maxLines = Math.max(1, (bottom - top) / lineH);
-        String self = c.effectiveName();
-        List<Line> lines = new ArrayList<>();
-        for (ChatMessage m : ChatClient.INSTANCE.snapshot(80)) {
-            String time = TIME.format(java.time.Instant.ofEpochMilli(m.time()));
-            int avail = pw - 12;
-            int prefix = font.width("[" + time + "] ");
-            if (m.system()) {
-                List<String> parts = wrap(font, "* " + m.text(), avail - prefix, avail);
-                for (int i = 0; i < parts.size(); i++) lines.add(new Line(time, null, 0, parts.get(i), 0xFFF5B041, i == 0));
-            } else {
-                int nameColor = m.user().equals(self) ? 0xFF57F287 : PALETTE[Math.abs(m.user().hashCode()) % PALETTE.length];
-                prefix += font.width(m.user() + ": ");
-                List<String> parts = wrap(font, m.text(), avail - prefix, avail);
-                for (int i = 0; i < parts.size(); i++) lines.add(new Line(time, m.user(), nameColor, parts.get(i), 0xFFE6E6E6, i == 0));
+        layout();
+        int top = py + 28, bottom = py + ph - 30, area = bottom - top;
+        scrollPx = Math.max(0, Math.min(scrollPx, Math.max(0, totalH - area)));
+        int y0 = bottom - totalH + scrollPx;
+        int hov = -1;
+        if (mx >= px && mx < px + pw && my >= top && my < bottom) {
+            int yy = y0;
+            for (Row r : rows) {
+                if (my >= yy && my < yy + r.h()) {
+                    hov = r.group();
+                    break;
+                }
+                yy += r.h();
+                if (yy > my) break;
             }
         }
-        int total = lines.size();
-        scroll = Math.max(0, Math.min(scroll, Math.max(0, total - maxLines)));
-        int end = total - scroll;
-        int start = Math.max(0, end - maxLines);
-        int y = bottom - (end - start) * lineH;
-        for (int i = start; i < end; i++) {
-            Line l = lines.get(i);
-            int x = px + 6;
-            if (l.head()) {
-                String t = "[" + l.time() + "] ";
-                g.drawString(font, t, x, y, 0xFF8A8F98, false);
-                x += font.width(t);
-                if (l.name() != null) {
-                    String n = l.name() + ": ";
-                    g.drawString(font, n, x, y, l.nameColor(), false);
-                    x += font.width(n);
+        int yy = y0;
+        int tx = px + 8 + 24;
+        for (Row r : rows) {
+            int h = r.h();
+            if (yy + h <= top) {
+                yy += h;
+                continue;
+            }
+            if (yy >= bottom) break;
+            if (yy >= top && yy + h <= bottom) {
+                if (r.group() == hov) g.fill(px + 3, yy, px + pw - 3, yy + h, 0x14FFFFFF);
+                if (r.system()) {
+                    g.drawString(font, r.text(), px + 8, yy + 1, r.color(), false);
+                } else if (r.head()) {
+                    Gfx.avatar(g, font, px + 8, yy + 3, r.color(), r.name());
+                    g.drawString(font, r.name(), tx, yy + 3, r.color(), false);
+                    int x = tx + font.width(r.name()) + 4;
+                    if (!r.icon().isEmpty()) {
+                        g.drawString(font, r.icon(), x, yy + 3, r.color(), false);
+                        x += font.width(r.icon()) + 4;
+                    }
+                    g.drawString(font, r.time(), x, yy + 3, 0xFF949BA4, false);
+                } else {
+                    g.drawString(font, r.text(), tx, yy + 1, 0xFFDBDEE1, false);
                 }
             }
-            g.drawString(font, l.text(), x, y, l.textColor(), false);
-            y += lineH;
+            yy += h;
         }
-        if (scroll > 0) g.drawString(font, "\u2193 " + scroll, px + pw - 40, bottom - 8, 0xFF8A8F98, false);
+        if (scrollPx > 0) {
+            Gfx.rrect(g, px + pw - 30, bottom - 14, px + pw - 8, bottom - 2, 0xFF5865F2);
+            g.drawString(font, "\u2193", px + pw - 22, bottom - 12, 0xFFFFFFFF, false);
+        }
+        Gfx.rrect(g, px + 6, py + ph - 25, px + pw - 6, py + ph - 5, 0xFF383A40);
     }
 }
