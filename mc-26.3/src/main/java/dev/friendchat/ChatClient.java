@@ -45,7 +45,46 @@ public final class ChatClient {
 
     public void toast(String title, String text) {
         Minecraft mc = Minecraft.getInstance();
-        mc.execute(() -> SystemToast.addOrUpdate(mc.getToastManager(), TOAST_ID, Component.literal(title), Component.literal(text)));
+        mc.execute(() -> showToast(title, text));
+    }
+
+    private static void showToast(String title, String text) {
+        Minecraft mc = Minecraft.getInstance();
+        try {
+            java.lang.reflect.Method add = null;
+            for (java.lang.reflect.Method m : SystemToast.class.getMethods()) {
+                if (m.getName().equals("addOrUpdate") && m.getParameterCount() == 4) add = m;
+            }
+            if (add == null) return;
+            Class<?> tmType = add.getParameterTypes()[0];
+            Object tm = null;
+            for (Object o : new Object[]{mc, mc.gui}) {
+                if (o == null || tm != null) continue;
+                for (java.lang.reflect.Method m : o.getClass().getMethods()) {
+                    if (m.getParameterCount() == 0 && tmType.isAssignableFrom(m.getReturnType())) {
+                        try {
+                            tm = m.invoke(o);
+                            break;
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                }
+                if (tm != null) continue;
+                for (java.lang.reflect.Field f : o.getClass().getDeclaredFields()) {
+                    if (tmType.isAssignableFrom(f.getType())) {
+                        try {
+                            f.setAccessible(true);
+                            tm = f.get(o);
+                            break;
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                }
+            }
+            if (tm == null) return;
+            add.invoke(null, tm, TOAST_ID, Component.literal(title), Component.literal(text));
+        } catch (Throwable ignored) {
+        }
     }
 
     public String status() {
@@ -177,7 +216,7 @@ public final class ChatClient {
         mc.execute(() -> {
             if (FriendChatClient.CURRENT instanceof FriendChatScreen) return;
             if (!self && c.popupMessages) {
-                SystemToast.addOrUpdate(mc.getToastManager(), TOAST_ID, Component.literal(title), Component.literal(text));
+                showToast(title, text);
             }
             if (mc.player != null && (c.echoToGameChat || (self && c.redirectGameChat))) {
                 mc.player.sendSystemMessage(Component.literal("\u00a79[FriendChat] \u00a7b" + (self ? "You" : user) + "\u00a7r: " + text));
